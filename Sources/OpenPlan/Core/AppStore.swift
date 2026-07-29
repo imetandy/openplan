@@ -262,8 +262,14 @@ final class AppStore: ObservableObject {
   }
 
   private func configure(_ window: NSWindow) {
+    window.styleMask.insert(.fullSizeContentView)
     window.titleVisibility = .hidden
     window.titlebarAppearsTransparent = true
+    window.titlebarSeparatorStyle = .none
+    window.backgroundColor = NSColor(
+      calibratedWhite: 0.055,
+      alpha: 1
+    )
     window.standardWindowButton(.closeButton)?.isHidden = true
     window.standardWindowButton(.miniaturizeButton)?.isHidden = true
     window.standardWindowButton(.zoomButton)?.isHidden = true

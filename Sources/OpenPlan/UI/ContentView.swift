@@ -8,6 +8,7 @@ struct ContentView: View {
     ServiceRail(store: store)
       .frame(width: 76)
       .frame(maxHeight: .infinity)
+      .ignoresSafeArea(.container, edges: .top)
       .background(
         HostWindowReader { window in
           store.registerHostWindow(window)
