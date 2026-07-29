@@ -1,0 +1,115 @@
+<svg width="1600" height="760" viewBox="0 0 1600 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="canvas" x1="82" y1="34" x2="1516" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171A25"/>
+      <stop offset=".48" stop-color="#0B0D14"/>
+      <stop offset="1" stop-color="#05060A"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="166" y1="655" x2="725" y2="75" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7657FF"/>
+      <stop offset="1" stop-color="#55D6FF"/>
+    </linearGradient>
+    <linearGradient id="window" x1="718" y1="148" x2="1460" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#262A37"/>
+      <stop offset="1" stop-color="#11131A"/>
+    </linearGradient>
+    <radialGradient id="aura" cx="0" cy="0" r="1" gradientTransform="translate(470 352) rotate(32) scale(498 386)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7657FF" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#7657FF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="bigShadow" x="622" y="80" width="928" height="678" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="34" stdDeviation="34" flood-color="#000" flood-opacity=".52"/>
+    </filter>
+    <filter id="softGlow" x="53" y="29" width="462" height="462" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <clipPath id="windowClip">
+      <rect x="678" y="115" width="802" height="570" rx="28"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1600" height="760" rx="36" fill="url(#canvas)"/>
+  <rect width="1600" height="760" rx="36" fill="url(#aura)"/>
+  <path d="M0 619C239 556 408 663 649 590C877 521 1024 385 1600 433V760H0V619Z" fill="#7657FF" fill-opacity=".035"/>
+  <path d="M0 678C293 611 490 723 781 623C1008 545 1253 475 1600 512" stroke="#55D6FF" stroke-opacity=".07" stroke-width="2"/>
+
+  <g transform="translate(98 87)">
+    <path d="M39 308V70" stroke="url(#signal)" stroke-width="38" stroke-linecap="round" opacity=".28" filter="url(#softGlow)"/>
+    <rect x="20" y="50" width="38" height="280" rx="19" fill="url(#signal)"/>
+    <circle cx="39" cy="111" r="7" fill="#0A0C13"/>
+    <circle cx="39" cy="190" r="7" fill="#0A0C13"/>
+    <circle cx="39" cy="269" r="7" fill="#0A0C13"/>
+
+    <rect x="114" y="74" width="188" height="142" rx="45" fill="#55D6FF" fill-opacity=".13" stroke="#6FDCFF" stroke-opacity=".32" stroke-width="4"/>
+    <rect x="82" y="103" width="198" height="154" rx="48" fill="url(#signal)"/>
+    <path d="M221 241L258 283L247 230L221 241Z" fill="#55D6FF"/>
+    <rect x="121" y="146" width="118" height="13" rx="6.5" fill="white" fill-opacity=".94"/>
+    <rect x="121" y="179" width="81" height="13" rx="6.5" fill="white" fill-opacity=".55"/>
+  </g>
+
+  <text x="104" y="492" fill="white" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="80" font-weight="750" letter-spacing="-3">OpenPlan</text>
+  <text x="107" y="549" fill="#B9BECC" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="27" font-weight="500">Every conversation. One native workspace.</text>
+  <g transform="translate(107 592)">
+    <rect width="214" height="46" rx="23" fill="white" fill-opacity=".07" stroke="white" stroke-opacity=".1"/>
+    <circle cx="25" cy="23" r="5" fill="#64D998"/>
+    <text x="42" y="30" fill="#E7E9EF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="600">macOS 14+ · Swift</text>
+  </g>
+
+  <g filter="url(#bigShadow)">
+    <rect x="678" y="115" width="802" height="570" rx="28" fill="url(#window)"/>
+    <rect x="678.75" y="115.75" width="800.5" height="568.5" rx="27.25" stroke="white" stroke-opacity=".13" stroke-width="1.5"/>
+  </g>
+
+  <g clip-path="url(#windowClip)">
+    <rect x="678" y="115" width="802" height="45" fill="#303440"/>
+    <circle cx="705" cy="138" r="7" fill="#FF5F57"/>
+    <circle cx="729" cy="138" r="7" fill="#FFBD2E"/>
+    <circle cx="753" cy="138" r="7" fill="#28C840"/>
+
+    <rect x="678" y="160" width="76" height="525" fill="#0A0C12"/>
+    <rect x="694" y="178" width="44" height="22" rx="11" fill="#292D39"/>
+    <circle cx="716" cy="225" r="17" fill="#4B3EA7"/>
+    <path d="M707 225H725M716 216V234" stroke="white" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="716" cy="275" r="17" fill="#5865F2"/>
+    <circle cx="716" cy="325" r="17" fill="#22B573"/>
+    <circle cx="716" cy="375" r="17" fill="#2AABEE"/>
+    <circle cx="716" cy="425" r="17" fill="#F4A340"/>
+    <rect x="711" y="474" width="10" height="10" rx="5" fill="#64D998"/>
+    <rect x="711" y="634" width="10" height="10" rx="5" fill="#7B8191"/>
+
+    <rect x="754" y="160" width="216" height="525" fill="#171A22"/>
+    <text x="780" y="204" fill="#F3F4F7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700">Product studio</text>
+    <rect x="780" y="227" width="147" height="29" rx="8" fill="white" fill-opacity=".07"/>
+    <circle cx="795" cy="241.5" r="4" fill="#55D6FF"/>
+    <rect x="809" y="237" width="89" height="8" rx="4" fill="white" fill-opacity=".55"/>
+    <rect x="780" y="278" width="104" height="8" rx="4" fill="white" fill-opacity=".27"/>
+    <rect x="780" y="304" width="151" height="8" rx="4" fill="white" fill-opacity=".27"/>
+    <rect x="780" y="330" width="123" height="8" rx="4" fill="white" fill-opacity=".27"/>
+    <rect x="780" y="356" width="139" height="8" rx="4" fill="white" fill-opacity=".27"/>
+
+    <rect x="970" y="160" width="510" height="525" fill="#20232C"/>
+    <rect x="970" y="160" width="510" height="64" fill="#252934"/>
+    <circle cx="1004" cy="192" r="15" fill="url(#signal)"/>
+    <text x="1030" y="189" fill="#F4F5F8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">Design crew</text>
+    <text x="1030" y="207" fill="#8F95A4" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11">8 members · 3 online</text>
+
+    <circle cx="1012" cy="278" r="15" fill="#7657FF"/>
+    <rect x="1042" y="252" width="273" height="54" rx="16" fill="#303440"/>
+    <rect x="1061" y="268" width="192" height="8" rx="4" fill="white" fill-opacity=".72"/>
+    <rect x="1061" y="285" width="128" height="7" rx="3.5" fill="white" fill-opacity=".32"/>
+
+    <circle cx="1438" cy="370" r="15" fill="#55D6FF"/>
+    <rect x="1110" y="337" width="298" height="65" rx="17" fill="url(#signal)"/>
+    <rect x="1131" y="355" width="222" height="8" rx="4" fill="white" fill-opacity=".92"/>
+    <rect x="1131" y="374" width="169" height="7" rx="3.5" fill="white" fill-opacity=".62"/>
+
+    <circle cx="1012" cy="468" r="15" fill="#F4A340"/>
+    <rect x="1042" y="438" width="317" height="61" rx="16" fill="#303440"/>
+    <rect x="1061" y="455" width="238" height="8" rx="4" fill="white" fill-opacity=".72"/>
+    <rect x="1061" y="474" width="177" height="7" rx="3.5" fill="white" fill-opacity=".32"/>
+
+    <rect x="998" y="615" width="454" height="44" rx="14" fill="#171A22" stroke="white" stroke-opacity=".08"/>
+    <rect x="1020" y="633" width="150" height="7" rx="3.5" fill="white" fill-opacity=".2"/>
+    <circle cx="1428" cy="637" r="10" fill="url(#signal)"/>
+  </g>
+</svg>

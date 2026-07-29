@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="48" x2="438" y2="474" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1D29"/>
+      <stop offset="1" stop-color="#07080D"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="116" y1="390" x2="384" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7657FF"/>
+      <stop offset="1" stop-color="#55D6FF"/>
+    </linearGradient>
+    <filter id="shadow" x="16" y="22" width="480" height="490" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#000000" flood-opacity=".5"/>
+    </filter>
+    <filter id="glow" x="62" y="52" width="378" height="378" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="40" width="432" height="432" rx="112" fill="url(#bg)"/>
+    <rect x="41" y="41" width="430" height="430" rx="111" stroke="white" stroke-opacity=".12" stroke-width="2"/>
+  </g>
+
+  <path d="M126 368V144" stroke="url(#signal)" stroke-width="42" stroke-linecap="round" opacity=".25" filter="url(#glow)"/>
+  <rect x="105" y="112" width="42" height="288" rx="21" fill="url(#signal)"/>
+  <circle cx="126" cy="174" r="8" fill="#080A10"/>
+  <circle cx="126" cy="256" r="8" fill="#080A10"/>
+  <circle cx="126" cy="338" r="8" fill="#080A10"/>
+
+  <rect x="210" y="151" width="198" height="154" rx="48" fill="#55D6FF" fill-opacity=".14" stroke="#7BDFFF" stroke-opacity=".35" stroke-width="5"/>
+  <rect x="177" y="181" width="210" height="164" rx="52" fill="url(#signal)"/>
+  <path d="M326 327L365 372L353 316L326 327Z" fill="#55D6FF"/>
+  <rect x="219" y="228" width="126" height="14" rx="7" fill="white" fill-opacity=".94"/>
+  <rect x="219" y="263" width="86" height="14" rx="7" fill="white" fill-opacity=".58"/>
+</svg>
