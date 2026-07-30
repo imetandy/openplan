@@ -3,6 +3,8 @@ set -euo pipefail
 
 PROJECT_DIR="${0:A:h:h}"
 BUILD_MODE="${1:-release}"
+APP_VERSION="${OPENPLAN_VERSION:-0.1.0}"
+BUILD_NUMBER="${OPENPLAN_BUILD_NUMBER:-1}"
 OUTPUT_DIR="$PROJECT_DIR/build"
 APP_DIR="$OUTPUT_DIR/OpenPlan.app"
 CONTENTS_DIR="$APP_DIR/Contents"
@@ -22,7 +24,7 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$BINARY_PATH" "$MACOS_DIR/OpenPlan"
 swift "$PROJECT_DIR/scripts/make_icon.swift" "$RESOURCES_DIR/AppIcon.icns"
 
-cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
+cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -44,9 +46,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>$APP_VERSION</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSAccessibilityUsageDescription</key>

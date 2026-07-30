@@ -77,6 +77,16 @@ bundles.
 - Xcode 15 or newer
 - Accessibility permission for OpenPlan
 
+### Install the latest release
+
+1. Download the latest macOS disk image from
+   [GitHub Releases](https://github.com/imetandy/openplan/releases/latest).
+2. Open the `.dmg` and drag OpenPlan into Applications.
+3. Launch OpenPlan and grant Accessibility access.
+
+Release builds are currently arm64, ad-hoc signed, and not notarized. macOS may
+ask you to confirm the first launch in **System Settings → Privacy & Security**.
+
 ### Build the app
 
 ```sh
@@ -165,6 +175,13 @@ Validate a release bundle:
 ```sh
 ./scripts/bundle.sh release
 codesign --verify --deep --strict --verbose=2 build/OpenPlan.app
+```
+
+Build the distributable disk image and checksum:
+
+```sh
+brew install create-dmg librsvg
+./scripts/package_release.sh 0.1.0
 ```
 
 The codebase is intentionally small:
