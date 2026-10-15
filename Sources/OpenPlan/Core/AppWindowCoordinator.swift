@@ -10,12 +10,17 @@ final class AppWindowCoordinator: ObservableObject {
   @Published private(set) var hiddenBundleIdentifiers: Set<String> = []
   @Published private(set) var sharedWindowSize: CGSize?
 
-  var trackedServices: [ChatService] = []
+  @Published private(set) var installedServiceIDs: Set<UUID> = []
+
+  var trackedServices: [ChatService] = [] {
+    didSet { refreshInstalledApplications() }
+  }
   var onTrackedApplicationActivated: ((String) -> Void)?
   var onSettingsWindowClosed: (() -> Void)?
 
   weak var hostWindow: NSWindow? {
     didSet {
+      windowPair.railWindow = hostWindow
       observeHostWindow()
     }
   }
@@ -32,22 +37,12 @@ final class AppWindowCoordinator: ObservableObject {
   private var settingsWindowObservers: [NSObjectProtocol] = []
   private var permissionTimer: Timer?
   private var tileWorkItem: DispatchWorkItem?
-  private var liveMoveWorkItem: DispatchWorkItem?
+  private let windowPair = WindowPairController()
+  private var pairGeneration = 0
+  private var isPairing = false
   private var tileGeneration = 0
   private var windowCache: [pid_t: AXUIElement] = [:]
-  private var liveMoveSession: LiveMoveSession?
-  private var pendingLiveRailOrigin: CGPoint?
-  private var lastSettledRailOrigin: CGPoint?
   private let sharedWindowSizeKey = "openplan.shared-window-size.v1"
-
-  private struct LiveMoveSession {
-    let serviceID: UUID
-    let processIdentifier: pid_t
-    let window: AXUIElement
-    let anchorRailOrigin: CGPoint
-    let anchorAppPosition: CGPoint
-    var lastAppliedPosition: CGPoint
-  }
 
   init() {
     if let encodedSize = UserDefaults.standard.string(
@@ -119,13 +114,21 @@ final class AppWindowCoordinator: ObservableObject {
         Task { @MainActor in
           guard
             let self,
-            self.trackedServices.contains(where: {
-              $0.bundleIdentifier == bundleIdentifier
+            let service = self.trackedServices.first(where: {
+              $0.isEnabled && $0.bundleIdentifier == bundleIdentifier
             })
           else {
             return
           }
+          let selectionChanged = self.selectedService?.id != service.id
+          if selectionChanged {
+            self.cancelLiveMove()
+            self.cancelPendingTile()
+            self.selectedService = service
+          }
+          self.windowCache[application.processIdentifier] = nil
           self.onTrackedApplicationActivated?(bundleIdentifier)
+          if selectionChanged || !self.windowPair.isAttached { self.attachSelectedApplication() }
         }
       }
     )
@@ -172,13 +175,16 @@ final class AppWindowCoordinator: ObservableObject {
     }
   }
 
+  func refreshInstalledApplications() {
+    ApplicationMetadataCache.shared.invalidate()
+    let installed = Set(trackedServices.filter {
+      ApplicationMetadataCache.shared.url(for: $0) != nil
+    }.map(\.id))
+    if installed != installedServiceIDs { installedServiceIDs = installed }
+  }
+
   func isInstalled(_ service: ChatService) -> Bool {
-    if FileManager.default.fileExists(atPath: service.applicationPath) {
-      return true
-    }
-    return NSWorkspace.shared.urlForApplication(
-      withBundleIdentifier: service.bundleIdentifier
-    ) != nil
+    ApplicationMetadataCache.shared.url(for: service) != nil
   }
 
   func select(_ service: ChatService, hiding previousService: ChatService?) {
@@ -217,6 +223,7 @@ final class AppWindowCoordinator: ObservableObject {
   }
 
   func tileSelectedApplication() {
+    cancelLiveMove()
     if settingsWindow?.isVisible == true {
       tileSettingsWindow()
       return
@@ -308,6 +315,7 @@ final class AppWindowCoordinator: ObservableObject {
   }
 
   func hideSettingsWindow() {
+    if settingsWindow?.isVisible == true { cancelLiveMove() }
     settingsWindow?.orderOut(nil)
   }
 
@@ -333,7 +341,6 @@ final class AppWindowCoordinator: ObservableObject {
     windowObservers.removeAll()
 
     guard let hostWindow else { return }
-    lastSettledRailOrigin = hostWindow.frame.origin
     let center = NotificationCenter.default
 
     windowObservers.append(
@@ -342,7 +349,7 @@ final class AppWindowCoordinator: ObservableObject {
         object: hostWindow,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor in self?.handleHostWindowMove() }
+        MainActor.assumeIsolated { self?.handleHostWindowMove() }
       }
     )
 
@@ -382,7 +389,10 @@ final class AppWindowCoordinator: ObservableObject {
         object: settingsWindow,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor in self?.onSettingsWindowClosed?() }
+        MainActor.assumeIsolated {
+          self?.cancelLiveMove()
+          self?.onSettingsWindowClosed?()
+        }
       }
     )
 
@@ -397,149 +407,53 @@ final class AppWindowCoordinator: ObservableObject {
     )
   }
 
+  func beginToolbarDrag() {
+    cancelPendingTile()
+    windowPair.beginRailDrag()
+  }
+
   private func handleHostWindowMove() {
-    guard let hostWindow else { return }
-    let currentRailOrigin = hostWindow.frame.origin
-
-    if settingsWindow?.isVisible == true {
-      tileSettingsWindow(positionOnly: NSEvent.pressedMouseButtons != 0)
-      lastSettledRailOrigin = currentRailOrigin
-      return
-    }
-
-    guard NSEvent.pressedMouseButtons != 0 else {
-      if liveMoveSession != nil {
-        finishLiveMove()
-      } else {
-        lastSettledRailOrigin = currentRailOrigin
-        scheduleSettledTile(after: 0.05)
-      }
-      return
-    }
-
-    if liveMoveSession == nil {
-      guard
-        accessibilityGranted,
-        let selectedService,
-        let application = runningApplication(for: selectedService),
-        !application.isHidden,
-        let window = firstWindow(of: application),
-        let appPosition = pointAttribute(
-          kAXPositionAttribute as CFString,
-          from: window
-        )
-      else {
-        return
-      }
-
-      cancelPendingTile()
-      captureSharedWindowSize(from: selectedService)
-      liveMoveSession = LiveMoveSession(
-        serviceID: selectedService.id,
-        processIdentifier: application.processIdentifier,
-        window: window,
-        anchorRailOrigin: lastSettledRailOrigin ?? currentRailOrigin,
-        anchorAppPosition: appPosition,
-        lastAppliedPosition: appPosition
-      )
-    }
-
-    pendingLiveRailOrigin = currentRailOrigin
-    scheduleLivePositionUpdate()
-    scheduleLiveMoveFinishCheck()
+    // A follower move is one-way. Never send it back to Slack as another AX move.
+    guard !windowPair.isAttached, !isPairing, NSEvent.pressedMouseButtons & 1 == 0 else { return }
+    scheduleSettledTile(after: 0.05)
   }
 
-  private func scheduleLivePositionUpdate() {
-    guard liveMoveWorkItem == nil else { return }
-
-    let workItem = DispatchWorkItem { [weak self] in
-      guard let self else { return }
-      self.liveMoveWorkItem = nil
-      self.applyPendingLivePosition()
-
-      if self.pendingLiveRailOrigin != nil {
-        self.scheduleLivePositionUpdate()
-      }
-    }
-
-    liveMoveWorkItem = workItem
-    DispatchQueue.main.asyncAfter(
-      deadline: .now() + (1.0 / 60.0),
-      execute: workItem
-    )
-  }
-
-  private func applyPendingLivePosition() {
-    guard
-      var session = liveMoveSession,
-      session.serviceID == selectedService?.id,
-      let railOrigin = pendingLiveRailOrigin
-    else {
-      pendingLiveRailOrigin = nil
-      return
-    }
-    pendingLiveRailOrigin = nil
-
-    let deltaX = railOrigin.x - session.anchorRailOrigin.x
-    let deltaY = railOrigin.y - session.anchorRailOrigin.y
-    var targetPosition = CGPoint(
-      x: session.anchorAppPosition.x + deltaX,
-      y: session.anchorAppPosition.y - deltaY
-    )
-
-    guard distance(session.lastAppliedPosition, targetPosition) > 0.75 else {
-      return
-    }
-
-    guard let positionValue = AXValueCreate(.cgPoint, &targetPosition) else {
-      return
-    }
-
-    let result = AXUIElementSetAttributeValue(
-      session.window,
-      kAXPositionAttribute as CFString,
-      positionValue
-    )
-
-    if result == .success {
-      session.lastAppliedPosition = targetPosition
-      liveMoveSession = session
-    } else if result == .invalidUIElement {
-      windowCache[session.processIdentifier] = nil
-      cancelLiveMove()
-    }
-  }
-
-  private func scheduleLiveMoveFinishCheck() {
+  private func attachSelectedApplication(attemptsRemaining: Int = 3) {
+    guard accessibilityGranted, let service = selectedService,
+      let application = runningApplication(for: service), !application.isHidden,
+      settingsWindow?.isVisible != true, hostWindow?.isMiniaturized != true
+    else { return }
+    cancelLiveMove()
     tileWorkItem?.cancel()
-    let workItem = DispatchWorkItem { [weak self] in
-      guard let self else { return }
-
-      if NSEvent.pressedMouseButtons != 0 {
-        self.scheduleLiveMoveFinishCheck()
-      } else {
-        self.finishLiveMove()
+    isPairing = true
+    let generation = pairGeneration
+    LivePositionWriter.prepare(processIdentifier: application.processIdentifier) { [weak self] snapshot in
+      guard let self, generation == self.pairGeneration,
+        self.selectedService?.id == service.id, !application.isHidden,
+        self.settingsWindow?.isVisible != true
+      else { return }
+      self.isPairing = false
+      if let snapshot,
+        self.windowPair.attach(processIdentifier: application.processIdentifier, snapshot: snapshot) {
+        self.windowCache[application.processIdentifier] = snapshot.window
+        self.windowPair.onUnavailable = { [weak self] in
+          self?.windowCache[application.processIdentifier] = nil
+          self?.attachSelectedApplication()
+        }
+      } else if attemptsRemaining > 0 {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+          guard let self, self.pairGeneration == generation else { return }
+          self.attachSelectedApplication(attemptsRemaining: attemptsRemaining - 1)
+        }
       }
     }
-    tileWorkItem = workItem
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: workItem)
-  }
-
-  private func finishLiveMove() {
-    liveMoveWorkItem?.cancel()
-    liveMoveWorkItem = nil
-    applyPendingLivePosition()
-    liveMoveSession = nil
-    pendingLiveRailOrigin = nil
-    lastSettledRailOrigin = hostWindow?.frame.origin
-    tileSelectedApplication()
   }
 
   private func cancelLiveMove() {
-    liveMoveWorkItem?.cancel()
-    liveMoveWorkItem = nil
-    liveMoveSession = nil
-    pendingLiveRailOrigin = nil
+    pairGeneration += 1
+    isPairing = false
+    windowPair.onUnavailable = nil
+    windowPair.detach()
   }
 
   private func scheduleSettledTile(after delay: TimeInterval) {
@@ -572,6 +486,7 @@ final class AppWindowCoordinator: ObservableObject {
     guard service.id == selectedService?.id else { return }
 
     if tile(service) {
+      attachSelectedApplication()
       return
     }
 
@@ -601,7 +516,8 @@ final class AppWindowCoordinator: ObservableObject {
     revealSelectedApplication()
   }
 
-  private func tileSettingsWindow(positionOnly: Bool = false) {
+  private func tileSettingsWindow() {
+    cancelLiveMove()
     guard
       let settingsWindow,
       let targetFrame = targetFrame()
@@ -609,11 +525,10 @@ final class AppWindowCoordinator: ObservableObject {
       return
     }
 
-    if positionOnly {
-      settingsWindow.setFrameOrigin(targetFrame.origin)
-    } else {
+    if settingsWindow.frame != targetFrame {
       settingsWindow.setFrame(targetFrame, display: true)
     }
+    windowPair.attach(nativeWindow: settingsWindow)
   }
 
   private func updateAccessibilityState(_ trusted: Bool) {
@@ -656,7 +571,6 @@ final class AppWindowCoordinator: ObservableObject {
       } ?? true
 
     if !positionChanged && !sizeChanged {
-      lastSettledRailOrigin = hostWindow?.frame.origin
       return true
     }
 
@@ -685,10 +599,6 @@ final class AppWindowCoordinator: ObservableObject {
       windowCache[application.processIdentifier] = nil
     }
 
-    if positionResult == .success && sizeResult == .success {
-      lastSettledRailOrigin = hostWindow?.frame.origin
-    }
-
     return positionResult == .success && sizeResult == .success
   }
 
@@ -698,6 +608,7 @@ final class AppWindowCoordinator: ObservableObject {
     }
 
     let appElement = AXUIElementCreateApplication(application.processIdentifier)
+    AXUIElementSetMessagingTimeout(appElement, 0.1)
     var value: CFTypeRef?
 
     guard
@@ -713,6 +624,7 @@ final class AppWindowCoordinator: ObservableObject {
 
     let window =
       windows.first(where: { window in
+        AXUIElementSetMessagingTimeout(window, 0.1)
         var minimizedValue: CFTypeRef?
         AXUIElementCopyAttributeValue(
           window,
@@ -723,6 +635,7 @@ final class AppWindowCoordinator: ObservableObject {
       }) ?? windows.first
 
     if let window {
+      AXUIElementSetMessagingTimeout(window, 0.1)
       windowCache[application.processIdentifier] = window
     }
     return window
@@ -788,6 +701,11 @@ final class AppWindowCoordinator: ObservableObject {
       return
     }
 
+    storeSharedWindowSize(size)
+  }
+
+  private func storeSharedWindowSize(_ size: CGSize) {
+    guard size.width >= 320, size.height >= 300 else { return }
     if let sharedWindowSize,
       abs(sharedWindowSize.width - size.width) <= 1,
       abs(sharedWindowSize.height - size.height) <= 1
@@ -905,12 +823,7 @@ final class AppWindowCoordinator: ObservableObject {
   }
 
   private func applicationURL(for service: ChatService) -> URL? {
-    if FileManager.default.fileExists(atPath: service.applicationPath) {
-      return URL(fileURLWithPath: service.applicationPath)
-    }
-    return NSWorkspace.shared.urlForApplication(
-      withBundleIdentifier: service.bundleIdentifier
-    )
+    ApplicationMetadataCache.shared.url(for: service)
   }
 
   private func runningApplication(
@@ -923,11 +836,21 @@ final class AppWindowCoordinator: ObservableObject {
 
   private func refreshRunningApplications() {
     let applications = NSWorkspace.shared.runningApplications
-    runningBundleIdentifiers = Set(applications.compactMap(\.bundleIdentifier))
-    hiddenBundleIdentifiers = Set(
+    let running = Set(applications.compactMap(\.bundleIdentifier))
+    let hidden = Set(
       applications.compactMap { application in
         application.isHidden ? application.bundleIdentifier : nil
       }
     )
+    if running != runningBundleIdentifiers { runningBundleIdentifiers = running }
+    let wasHidden = selectedService.map { hiddenBundleIdentifiers.contains($0.bundleIdentifier) } ?? false
+    if hidden != hiddenBundleIdentifiers { hiddenBundleIdentifiers = hidden }
+    if let service = selectedService {
+      if hidden.contains(service.bundleIdentifier) || !running.contains(service.bundleIdentifier) {
+        cancelLiveMove()
+      } else if wasHidden {
+        attachSelectedApplication()
+      }
+    }
   }
 }

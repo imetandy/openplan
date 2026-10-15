@@ -23,7 +23,7 @@ struct ServiceMark: View {
           lineWidth: 1
         )
 
-      if let icon = ApplicationIconCache.shared.icon(for: service) {
+      if let icon = ApplicationMetadataCache.shared.icon(for: service) {
         Image(nsImage: icon)
           .resizable()
           .scaledToFit()
@@ -41,26 +41,5 @@ struct ServiceMark: View {
       radius: 10,
       y: 3
     )
-  }
-}
-
-@MainActor
-private final class ApplicationIconCache {
-  static let shared = ApplicationIconCache()
-
-  private var icons: [String: NSImage] = [:]
-
-  func icon(for service: ChatService) -> NSImage? {
-    let path = service.applicationPath
-    guard FileManager.default.fileExists(atPath: path) else { return nil }
-
-    if let cached = icons[path] {
-      return cached
-    }
-
-    let icon = NSWorkspace.shared.icon(forFile: path)
-    icon.isTemplate = false
-    icons[path] = icon
-    return icon
   }
 }

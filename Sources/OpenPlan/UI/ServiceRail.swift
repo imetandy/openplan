@@ -2,14 +2,19 @@ import SwiftUI
 
 struct ServiceRail: View {
   @ObservedObject var store: AppStore
-  @State private var hoveredServiceID: UUID?
+  @ObservedObject private var appWindows: AppWindowCoordinator
+
+  init(store: AppStore) {
+    self.store = store
+    self.appWindows = store.appWindows
+  }
   @State private var isMinimizeHovered = false
   @State private var isFitHovered = false
 
   var body: some View {
     VStack(spacing: 0) {
       VStack(spacing: 0) {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
           Button {
             store.minimizeWorkspace()
           } label: {
@@ -38,10 +43,10 @@ struct ServiceRail: View {
           .onHover { isFitHovered = $0 }
           .accessibilityLabel("Fit selected app")
         }
-        .disabled(!store.appWindows.accessibilityGranted)
-        .opacity(store.appWindows.accessibilityGranted ? 1 : 0.35)
+        .disabled(!appWindows.accessibilityGranted)
+        .opacity(appWindows.accessibilityGranted ? 1 : 0.35)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 13)
+        .padding(.leading, 9)
         .frame(height: 36)
         .background(Color.white.opacity(0.095))
         .overlay(alignment: .bottom) {
@@ -54,6 +59,9 @@ struct ServiceRail: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
       .frame(width: 76, height: 76)
+      .overlay(WindowDragHandle(
+        onBegin: appWindows.beginToolbarDrag
+      ))
       .contentShape(Rectangle())
       .help("Drag to move OpenPlan")
 
@@ -71,7 +79,7 @@ struct ServiceRail: View {
       }
       .frame(maxHeight: .infinity)
 
-      if !store.appWindows.accessibilityGranted {
+      if !appWindows.accessibilityGranted {
         Button {
           store.requestAccessibilityAccess()
         } label: {
@@ -134,7 +142,8 @@ struct ServiceRail: View {
         .foregroundStyle(Color.black.opacity(isHovered ? 0.7 : 0))
     }
     .frame(width: 13, height: 13)
-    .contentShape(Circle())
+    .frame(width: 21, height: 28)
+    .contentShape(Rectangle())
   }
 
   private func serviceButton(
@@ -142,23 +151,38 @@ struct ServiceRail: View {
     shortcut: Int?
   ) -> some View {
     let isSelected = store.selectedServiceID == service.id
-    let isRunning = store.appWindows.runningBundleIdentifiers.contains(
+    let isRunning = appWindows.runningBundleIdentifiers.contains(
       service.bundleIdentifier
     )
-    let isHidden = store.appWindows.hiddenBundleIdentifiers.contains(
+    let isHidden = appWindows.hiddenBundleIdentifiers.contains(
       service.bundleIdentifier
     )
-    let isInstalled = store.appWindows.isInstalled(service)
+    let isInstalled = appWindows.installedServiceIDs.contains(service.id)
 
-    return Button {
-      if !isInstalled {
-        store.showSettings()
-      } else {
-        withAnimation(.snappy(duration: 0.2)) {
-          store.select(service.id)
-        }
-      }
-    } label: {
+    return ServiceRailButton(
+      service: service,
+      shortcut: shortcut,
+      isSelected: isSelected,
+      isRunning: isRunning,
+      isHidden: isHidden,
+      isInstalled: isInstalled
+    ) { store.select(service.id) }
+  }
+}
+
+private struct ServiceRailButton: View {
+  let service: ChatService
+  let shortcut: Int?
+  let isSelected: Bool
+  let isRunning: Bool
+  let isHidden: Bool
+  let isInstalled: Bool
+  let action: () -> Void
+  @State private var isHovered = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    Button(action: action) {
       ZStack {
         if isSelected {
           Capsule()
@@ -192,10 +216,10 @@ struct ServiceRail: View {
       }
       .frame(width: 62, height: 50)
       .background(
-        Color.white.opacity(hoveredServiceID == service.id ? 0.045 : 0),
+        Color.white.opacity(isHovered ? 0.045 : 0),
         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
       )
-      .scaleEffect(hoveredServiceID == service.id ? 1.025 : 1)
+      .scaleEffect(isHovered ? 1.025 : 1)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -206,13 +230,13 @@ struct ServiceRail: View {
     )
     .accessibilityLabel(service.name)
     .onHover { isHovering in
-      hoveredServiceID = isHovering ? service.id : nil
+      isHovered = isHovering
     }
     .animation(
-      .spring(response: 0.25, dampingFraction: 0.75),
+      reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75),
       value: isRunning
     )
-    .animation(.easeOut(duration: 0.14), value: hoveredServiceID)
+    .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isHovered)
   }
 
   private func shortcutLabel(_ shortcut: Int?) -> String {

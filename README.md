@@ -35,8 +35,15 @@ developers intended.
   than loading their websites.
 - **One shared geometry** — resize one workspace window and every app inherits
   that size as you switch.
-- **60 fps rail movement** — chat windows track the rail in real time using
-  coalesced position-only updates, with one final layout pass on release.
+- **Move either window** — the window you grab leads. Drag a chat window and the
+  rail follows its WindowServer position. Drag the toolbar and macOS moves the
+  rail natively. A dedicated worker reads its screen position and sends
+  position-only updates to the chat app at 120 Hz, independently of the UI loop.
+  The pair keeps its side and size without refitting on release.
+- **Responsive toolbar dragging** — the rail never waits for the chat app to
+  acknowledge a move. Cross-process writes run off the UI thread, and slow apps
+  receive the latest destination instead of a backlog. High-refresh tracking
+  stops when movement settles.
 - **Workspace controls** — minimize every managed window together or refit the
   active surface from the macOS-style title strip.
 - **A real settings surface** — Settings occupies the same workspace slot,
@@ -115,7 +122,9 @@ grant access to their content.
 | --- | --- |
 | Select an app | Launches or reveals it beside the rail and hides the previous app |
 | Select the active app | Hides it; select it again to reveal it |
-| Drag the rail | Moves the visible workspace window alongside it at roughly 60 fps |
+| Drag a chat window | The rail follows the app, keeping the same side and spacing |
+| Drag the toolbar or logo | Moves the paired chat or Settings window; buttons stay clickable |
+| Release a drag | Keeps the new position and size without refitting or switching sides |
 | Resize a workspace window | Stores that size for every app you switch to |
 | Yellow title control | Minimizes the rail and every managed app |
 | Green title control | Refits the current chat or Settings window |
@@ -176,6 +185,29 @@ Validate a release bundle:
 ./scripts/bundle.sh release
 codesign --verify --deep --strict --verbose=2 build/OpenPlan.app
 ```
+
+Run the regression tests:
+
+```sh
+swift test
+```
+
+Tests cover toolbar hit testing inside the SwiftUI rail, following while the UI
+thread is blocked, skipping obsolete positions under a slow app, cancellation,
+closed windows, timeouts, attachment geometry across displays,
+and native Settings/rail movement in both directions. Actual cross-process
+tracking smoothness also depends on the managed app's Accessibility response time.
+
+During a drag, OpenPlan queries only the paired WindowServer window ID. Mouse
+movement and Accessibility notifications wake the tracker; it stops polling after
+movement settles. The follower only moves the rail and never writes positions
+back to the app during an app-led drag. During a toolbar-led drag, reverse
+following is suspended so delayed app notifications cannot pull the toolbar
+backwards. Grabbing the app cancels the toolbar worker immediately, including
+any pending final-position update. The worker runs only during toolbar drags,
+reads the latest geometry for each write, and makes no main-thread round trips
+between writes. Settings uses AppKit child windows, with the grabbed window as
+parent.
 
 Build the distributable disk image and checksum:
 

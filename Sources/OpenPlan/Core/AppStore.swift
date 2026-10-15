@@ -85,6 +85,7 @@ final class AppStore: ObservableObject {
       for: NSApplication.didBecomeActiveNotification
     )
     .sink { [weak self] _ in
+      self?.appWindows.refreshInstalledApplications()
       self?.scheduleSelectedAppFocus()
     }
     .store(in: &cancellables)
@@ -273,7 +274,7 @@ final class AppStore: ObservableObject {
     window.standardWindowButton(.closeButton)?.isHidden = true
     window.standardWindowButton(.miniaturizeButton)?.isHidden = true
     window.standardWindowButton(.zoomButton)?.isHidden = true
-    window.isMovableByWindowBackground = true
+    window.isMovableByWindowBackground = false
     window.level = .floating
     window.hidesOnDeactivate = false
     window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
